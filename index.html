@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Playlist Alarm</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            background-color: #1A3B61FF;
+            color: white;
+            padding: 10px 0;
+            width: 100%;
+            text-align: center;
+            position: relative;
+        }
+
+        header h1 {
+            margin: 0;
+            text-decoration: underline;
+            text-decoration-color: orange;
+        }
+
+        main {
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .playlist {
+            background: white;
+            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .playlist h2 {
+            margin-top: 0;
+            color: #F6C873FF;
+            cursor: pointer;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .time-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .button-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .controls label {
+            margin-right: 10px;
+        }
+
+        .controls input[type="time"] {
+            width: 120px;
+        }
+
+        .controls button, .controls .file-input-label {
+            background-color: #456FA0FF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .controls button:hover, .controls .file-input-label:hover {
+            background-color: #3B5998;
+        }
+
+        .controls input[type="file"] {
+            display: none;
+        }
+
+        .file-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .file-list li {
+            background: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+
+        .file-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .add-alarm {
+            margin-top: 20px;
+        }
+
+        .add-alarm button {
+            background-color: #456FA0FF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .add-alarm button:hover {
+            background-color: #3B5998;
+        }
+
+        .delete-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .delete-button:hover {
+            background-color: darkred;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Music Playlist Alarm</h1>
+    </header>
+    <main>
+        <div class="add-alarm">
+            <button onclick="addAlarm()">Add New Alarm</button>
+        </div>
+    </main>
+    <script>
+        let alarmCount = 0;
+        let alarms = {};
+
+        function addAlarm() {
+            alarmCount++;
+            const main = document.querySelector('main');
+            const alarmDiv = document.createElement('div');
+            alarmDiv.className = 'playlist';
+            alarmDiv.id = `playlist-${alarmCount}`;
+            alarmDiv.innerHTML = `
+                <h2 contenteditable="true" style="max-width: 300px; color: #336699;">Alarm Playlist ${alarmCount}</h2>
+                <div class="controls">
+                    <div class="time-controls">
+                        <label for="start-time-${alarmCount}">Start Time:</label>
+                        <input type="time" id="start-time-${alarmCount}" />
+                        <label for="end-time-${alarmCount}">End Time:</label>
+                        <input type="time" id="end-time-${alarmCount}" />
+                    </div>
+                    <div class="button-controls">
+                        <label class="file-input-label" for="file-input-${alarmCount}">Choose Files</label>
+                        <input type="file" id="file-input-${alarmCount}" multiple accept="audio/mp3" />
+                        <button onclick="toggleAlarm(${alarmCount}, this)">Set Alarm</button>
+                    </div>
+                </div>
+                <button class="delete-button" onclick="deleteAlarm(${alarmCount})">Delete</button>
+                <ul class="file-list" id="file-list-${alarmCount}"></ul>
+            `;
+            main.appendChild(alarmDiv);
+
+            const fileInput = document.getElementById(`file-input-${alarmCount}`);
+            const fileList = document.getElementById(`file-list-${alarmCount}`);
+            alarms[alarmCount] = { files: [], alarmTimeout: null, endTimeout: null };
+
+            fileInput.addEventListener('change', (event) => {
+                const newFiles = Array.from(event.target.files);
+                alarms[alarmCount].files = alarms[alarmCount].files.concat(newFiles);
+                fileList.innerHTML = '';
+                alarms[alarmCount].files.forEach(file => {
+                    const li = document.createElement('li');
+                    li.textContent = file.name;
+                    fileList.appendChild(li);
+                });
+            });
+        }
+
+        function toggleAlarm(alarmId, button) {
+            if (button.textContent === "Set Alarm") {
+                startAlarm(alarmId, button);
+            } else {
+                stopAlarm(alarmId, button);
+            }
+        }
+
+        function startAlarm(alarmId, button) {
+            const startTimeInput = document.getElementById(`start-time-${alarmId}`);
+            const endTimeInput = document.getElementById(`end-time-${alarmId}`);
+            const startTime = startTimeInput.value;
+            const endTime = endTimeInput.value;
+
+            if (!startTime || !endTime) {
+                alert('Please set valid start and end times');
+                return;
+            }
+
+            const now = new Date();
+            const [startHours, startMinutes] = startTime.split(':');
+            let startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHours, startMinutes, 0, 0);
+
+            if (startDate < now) {
+                startDate.setDate(startDate.getDate() + 1);
+            }
+
+            const [endHours, endMinutes] = endTime.split(':');
+            let endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHours, endMinutes, 0, 0);
+
+            if (endDate < startDate) {
+                endDate.setDate(endDate.getDate() + 1);
+            }
+
+            const startDifference = startDate - now;
+            const endDifference = endDate - now;
+
+            alarms[alarmId].alarmTimeout = setTimeout(() => playPlaylist(alarmId), startDifference);
+            alarms[alarmId].endTimeout = setTimeout(() => stopPlaylist(alarmId, button), endDifference);
+
+            alert('Alarm is set for ' + startTime + ' to ' + endTime);
+            button.textContent = "Cancel Alarm";
+        }
+
+        function stopAlarm(alarmId, button) {
+            clearTimeout(alarms[alarmId].alarmTimeout);
+            clearTimeout(alarms[alarmId].endTimeout);
+            button.textContent = "Set Alarm";
+            alert('Alarm is cancelled');
+        }
+
+        function playPlaylist(alarmId) {
+            const files = alarms[alarmId].files;
+            if (files.length === 0) {
+                alert('No files to play for this alarm');
+                return;
+            }
+
+            let currentIndex = 0;
+
+            function playNextSong() {
+                if (currentIndex >= files.length) {
+                    return;
+                }
+
+                const file = files[currentIndex];
+                const audio = new Audio(URL.createObjectURL(file));
+                audio.play();
+
+                audio.addEventListener('ended', () => {
+                    currentIndex++;
+                    playNextSong();
+                });
+
+                alarms[alarmId].currentAudio = audio;
+            }
+
+            playNextSong();
+        }
+
+        function stopPlaylist(alarmId, button) {
+            if (alarms[alarmId].currentAudio) {
+                alarms[alarmId].currentAudio.pause();
+                alarms[alarmId].currentAudio.currentTime = 0;
+            }
+
+            button.textContent = "Set Alarm";
+            alert('Alarm has stopped');
+        }
+
+        function deleteAlarm(alarmId) {
+    const alarmDiv = document.getElementById(`playlist-${alarmId}`);
+    alarmDiv.remove();
+    clearTimeout(alarms[alarmId].alarmTimeout);
+    clearTimeout(alarms[alarmId].endTimeout);
+    if (alarms[alarmId].currentAudio) {
+        alarms[alarmId].currentAudio.pause();
+        alarms[alarmId].currentAudio.currentTime = 0;
+    }
+    delete alarms[alarmId];
+}
+    </script>
+</body>
+</html>
